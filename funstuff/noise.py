@@ -15,6 +15,7 @@ if __name__ == '__main__':
       print "Warning: failed to XInitThreads()"
 
 from PyQt4 import Qt
+import osmosdr
 from gnuradio import analog
 from gnuradio import blocks
 from gnuradio import eng_notation
@@ -32,7 +33,7 @@ from gnuradio import qtgui
 from PIL import Image
 import copy
 
-usrp_enable = True
+usrp_enable = False
 
 class noise(gr.top_block, Qt.QWidget):
   def __init__(self, imagefile):
@@ -78,13 +79,24 @@ class noise(gr.top_block, Qt.QWidget):
       self.uhd_usrp_sink_0.set_gain(50, 0)
       self.uhd_usrp_sink_0.set_antenna('TX/RX', 0)
       self.uhd_usrp_sink_0.set_bandwidth(width * 5, 0)
+    else:
+      self.osmosdr_sink_0 = osmosdr.sink( args="numchan=" + str(1) + " " + '' )
+      self.osmosdr_sink_0.set_time_source('gpsdo', 0)
+      self.osmosdr_sink_0.set_sample_rate(80000)
+      self.osmosdr_sink_0.set_center_freq(2400000000, 0)
+      self.osmosdr_sink_0.set_freq_corr(0, 0)
+      self.osmosdr_sink_0.set_gain(10, 0)
+      self.osmosdr_sink_0.set_if_gain(20, 0)
+      self.osmosdr_sink_0.set_bb_gain(20, 0)
+      self.osmosdr_sink_0.set_antenna('0', 0)
+      self.osmosdr_sink_0.set_bandwidth(20, 0)
     self.qtgui_freq_sink_x_0 = qtgui.freq_sink_c(
-    	5000, #size
-    	firdes.WIN_BLACKMAN_hARRIS, #wintype
-    	2460000000, #fc
-    	400, #bw
-    	"", #name
-    	1 #number of inputs
+      5000, #size
+      firdes.WIN_BLACKMAN_hARRIS, #wintype
+      2460000000, #fc
+      400, #bw
+      "", #name
+      1 #number of inputs
     )
     self.qtgui_freq_sink_x_0.set_update_time(0.10)
     self.qtgui_freq_sink_x_0.set_y_axis(-140, 10)
@@ -153,6 +165,10 @@ class noise(gr.top_block, Qt.QWidget):
     if usrp_enable:
       print " [+] ok, connecting USRP sink. going live..."
       self.connect((self.columns[-1],0),(self.uhd_usrp_sink_0,0))
+    else:
+      print " [+] ok, connecting osmocom sink, going live..."
+      self.connect((self.columns[-1],0),(self.osmosdr_sink_0,0))
+      
 
   def closeEvent(self, event):
     self.settings = Qt.QSettings("GNU Radio", "noise")
